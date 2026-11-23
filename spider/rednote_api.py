@@ -33,6 +33,10 @@ Usage (from this directory, .venv python):
 Cookies source: the MCP login's cookies.json (see XHS_COOKIES_JSON below).
 Refresh by re-logging in via the MCP QR flow; do NOT copy cookie values
 into any other file, and never commit cookies.json.
+
+Dev-platform override: XHS_WEBAPI_BASE points the API host at the
+mock server in mcp/dev/ (default https://webapi.rednote.com); see
+mcp/dev/DEV_PLATFORM.md.
 """
 import json
 import os
@@ -55,7 +59,7 @@ from xhs_utils.xhs_pc.params import (  # noqa: E402
     splice_str,
 )
 
-WEBAPI = "https://webapi.rednote.com"
+WEBAPI = os.environ.get("XHS_WEBAPI_BASE", "https://webapi.rednote.com")
 # Path to the MCP login's cookies.json. Set XHS_COOKIES_JSON to override;
 # default assumes this repo sits next to the MCP checkout (see setup.sh).
 MCP_COOKIES = Path(os.environ.get(

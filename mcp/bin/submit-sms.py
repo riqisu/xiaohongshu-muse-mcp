@@ -92,7 +92,9 @@ def main():
         r = ev("""
 (() => {
   const inp = [...document.querySelectorAll('input')].find(e => e.placeholder === '%s');
-  return inp ? 'SMS-OPEN' : 'NO SMS INPUT';
+  if (!inp) return 'NO SMS INPUT';
+  const b = inp.getBoundingClientRect();
+  return (b.width > 0 && b.height > 0) ? 'SMS-OPEN' : 'SMS-HIDDEN';
 })()
 """ % SMS_PLACEHOLDER)
         if r.get("result", {}).get("result", {}).get("value") == "SMS-OPEN":
@@ -156,7 +158,14 @@ def main():
   } catch (e) { return 'ERR: ' + e.message; }
 })()
 """ % SMS_PLACEHOLDER)
-    st = json.loads(r["result"]["result"]["value"])
+    val3 = r["result"]["result"]["value"]
+    try:
+        st = json.loads(val3)
+    except (ValueError, TypeError):
+        print(f"error: SMS dialog closed mid-submit ({str(val3)[:80]}) — get a fresh QR",
+              file=sys.stderr)
+        ws.close()
+        return 1
     print("after typing:", st)
     if st.get("val") == code and st.get("btn") and "btn-disabled" not in (st.get("btnCls") or ""):
         click(st["btn"]["x"], st["btn"]["y"])

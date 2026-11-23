@@ -39,6 +39,7 @@ The obvious route does not work. Verified live (2026-11-23):
 | `setup.sh` | One-command setup: clones upstreams at pinned commits, downloads the MCP binaries (SHA-256 verified), builds the Spider venv. |
 | `mcp/bin/` | Our MCP helper scripts: `start-all.sh`, `status.sh`, `stop-all.sh`, `get-qr.py` (dynamic QR), `login-auto.py` (scripted QR login loop — own the waits, see the skill), `login-qr.sh` (headed login tool), `submit-sms.py` (fast SMS submit via CDP), `cleanup-login.sh` (close leftover login Chrome after a round), `client.py` (MCP client), `relay.py` (optional localhost CONNECT relay). Binaries are downloaded by `setup.sh`, not committed. |
 | `mcp/README.md` | MCP server details, tools, and troubleshooting. |
+| `mcp/dev/` | Local dev platform: mock Xiaohongshu on 127.0.0.1:18100 + harness (`run-dev-test.sh`, T1–T5). Run it after any change to the login/search scripts, before touching the real flow. Details in `mcp/dev/DEV_PLATFORM.md`. |
 | `spider/rednote_api.py` | **The working route.** Search / read notes / read collections via `webapi.rednote.com` + local signing. `me`, `search`, `collect`, `note` subcommands. |
 | `spider/qr_login.py`, `spider/sms_login.py` | Spider QR / SMS login drivers (alternative login path). |
 | `spider/test_search.py` | Diagnostic: the old xiaohongshu.com route (expected `-104`). |

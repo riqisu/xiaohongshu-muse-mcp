@@ -1,0 +1,10 @@
+# Pinned Python deps for the Xiaohongshu dev platform + login scripts.
+# Install into the Spider venv (survives nothing by itself — re-run after
+# a VM restart, which wiped these once already on 2026-11-23):
+#   vendor/Spider_XHS/.venv/bin/pip install -r mcp/dev/requirements-dev.txt
+websocket-client==1.9.2
+mss==10.2.0
+python-xlib==0.33
+pillow==13.0.0
+opencv-python-headless==5.1.0.95
+qrcode==8.2

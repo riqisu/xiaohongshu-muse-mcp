@@ -129,3 +129,13 @@ vendor/Spider_XHS/.venv/bin/python spider/rednote_api.py note <note_id> <xsec_to
 
 Full session notes, including every failure and root cause, are in
 the repo at `docs/session-summary.md`.
+
+## Dev platform (simulated environment)
+
+`mcp/dev/` — a mock Xiaohongshu on 127.0.0.1:18100 (mock login page
++ mock API with the real error classes: -100, -104, 300031, -1).
+Run `bash mcp/dev/run-dev-test.sh` (~50 s, 5 tests) after any change
+to the login/search scripts, before touching the real flow: T1 full
+mock login round, T2 stale-Chrome skip, T3 dialog-closed clean
+failure, T4 mock API, T5 QR decode. Details + chaos knobs in
+`mcp/dev/DEV_PLATFORM.md`. Never point the harness at the real site.
