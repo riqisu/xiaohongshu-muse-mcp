@@ -1,0 +1,19 @@
+# Secrets and local state -- never commit any of these.
+cookies.json
+spider-cookies.txt
+sms-code.txt
+*-result.json
+qr-status.json
+sms-status.json
+qr-login*.png
+login-qrcode*.png
+*.muse-github-snapshot-sync.json
+# Build / runtime artefacts
+vendor/
+mcp/bin/xiaohongshu-mcp-*
+mcp/bin/xiaohongshu-login-*
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.DS_Store
