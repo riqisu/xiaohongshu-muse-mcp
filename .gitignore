@@ -7,6 +7,8 @@ qr-status.json
 sms-status.json
 qr-login*.png
 login-qrcode*.png
+xiaohongshu-qrcode-*.png
+login-auto-state.json
 *.muse-github-snapshot-sync.json
 # Build / runtime artefacts
 vendor/

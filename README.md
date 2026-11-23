@@ -37,7 +37,7 @@ The obvious route does not work. Verified live (2026-11-23):
 | Path | What it is |
 |---|---|
 | `setup.sh` | One-command setup: clones upstreams at pinned commits, downloads the MCP binaries (SHA-256 verified), builds the Spider venv. |
-| `mcp/bin/` | Our MCP helper scripts: `start-all.sh`, `status.sh`, `stop-all.sh`, `get-qr.py` (dynamic QR), `login-qr.sh` (headed login tool), `submit-sms.py` (fast SMS submit via CDP), `client.py` (MCP client), `relay.py` (optional localhost CONNECT relay). Binaries are downloaded by `setup.sh`, not committed. |
+| `mcp/bin/` | Our MCP helper scripts: `start-all.sh`, `status.sh`, `stop-all.sh`, `get-qr.py` (dynamic QR), `login-auto.py` (scripted QR login loop — own the waits, see the skill), `login-qr.sh` (headed login tool), `submit-sms.py` (fast SMS submit via CDP), `cleanup-login.sh` (close leftover login Chrome after a round), `client.py` (MCP client), `relay.py` (optional localhost CONNECT relay). Binaries are downloaded by `setup.sh`, not committed. |
 | `mcp/README.md` | MCP server details, tools, and troubleshooting. |
 | `spider/rednote_api.py` | **The working route.** Search / read notes / read collections via `webapi.rednote.com` + local signing. `me`, `search`, `collect`, `note` subcommands. |
 | `spider/qr_login.py`, `spider/sms_login.py` | Spider QR / SMS login drivers (alternative login path). |
@@ -69,10 +69,14 @@ Then, in your Muse chat, say:
 The agent will:
 
 1. Check the stack and current login state (`mcp/bin/status.sh`).
-2. Generate a fresh QR code (`mcp/bin/get-qr.py`, ~10 s, 4 min validity).
-3. **Enlarge it and add a white border before sending it to you.**
-   The MCP returns a 128×128 QR with no quiet zone — phones cannot
-   scan it as-is. This is the single most common failure.
+2. Generate a fresh QR code — prefer the scripted loop
+   `mcp/bin/login-auto.py` (owns generation, enlarge + white border,
+   polling, and auto-refresh on expiry); the manual path is
+   `mcp/bin/get-qr.py` (~10 s, 4 min validity).
+3. **If you generated the QR manually, enlarge it and add a white
+   border before sending it to you.** (`login-auto.py` already does
+   this.) The MCP returns a 128×128 QR with no quiet zone — phones
+   cannot scan it as-is. This is the single most common failure.
 4. You scan it **inside the Xiaohongshu app** (scan / 扫一扫) and tap
    confirm immediately. Scanning with the system camera or WeChat
    does not reach the login confirmation.
@@ -113,7 +117,8 @@ vendor/Spider_XHS/.venv/bin/python spider/rednote_api.py note <note_id> <xsec_to
   decodes the QR, resolves the short link to `note_id` + `xsec_token`,
   and returns the full text + all images. Videos: title/intro/comments
   only, no transcription.
-- **Search:** keyword search, with titles, authors, like counts, note IDs.
+- **Search:** keyword search, with titles, authors, like counts, note IDs,
+  and the original post link for each result.
 - **Collections:** list your own collected notes (paged; `--all` for all).
 - **Summaries:** report only what the post says. No added commentary
   or judgement — if something needs checking, check a source first.

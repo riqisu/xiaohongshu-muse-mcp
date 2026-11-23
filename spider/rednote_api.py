@@ -64,6 +64,20 @@ MCP_COOKIES = Path(os.environ.get(
 ))
 
 
+def note_url(note_id, xsec_token=""):
+    """Original post link (open in browser / Xiaohongshu app).
+
+    Every result should carry its original link so the reader can open
+    the source directly. The per-note xsec_token comes from the search
+    result / share link; without it the plain explore URL still opens
+    public notes.
+    """
+    base = f"https://www.xiaohongshu.com/explore/{note_id}"
+    if xsec_token:
+        return f"{base}?xsec_token={xsec_token}&xsec_source=pc_search"
+    return base
+
+
 def _rednote_cookies():
     data = json.loads(MCP_COOKIES.read_text())
     out = {}
@@ -139,7 +153,8 @@ def _show_search(res):
         nc = it.get("note_card") or {}
         user = nc.get("user") or {}
         print(f"- {nc.get('display_title')} | {user.get('nickname')} | "
-              f"likes={(nc.get('interact_info') or {}).get('liked_count')} | id={it.get('id')}")
+              f"likes={(nc.get('interact_info') or {}).get('liked_count')} | id={it.get('id')} | "
+              f"{note_url(it.get('id'), it.get('xsec_token') or '')}")
 
 
 def main(argv):
@@ -165,7 +180,8 @@ def main(argv):
             print(f"collect page: code={res.get('code')} notes={len(notes)} "
                   f"has_more={((res or {}).get('data') or {}).get('has_more')}")
             for n in notes:
-                print(f"- {n.get('display_title')} | {(n.get('user') or {}).get('nickname')} | id={n.get('note_id')}")
+                print(f"- {n.get('display_title')} | {(n.get('user') or {}).get('nickname')} | id={n.get('note_id')} | "
+                      f"{note_url(n.get('note_id'), n.get('xsec_token') or '')}")
             total += len(notes)
             cursor = str(((res or {}).get("data") or {}).get("cursor") or "")
             if "--all" not in argv or not ((res or {}).get("data") or {}).get("has_more") or not notes:
@@ -173,6 +189,7 @@ def main(argv):
         print(f"total collected shown: {total}")
     elif cmd == "note":
         res = note_info(api, argv[2], argv[3] if len(argv) > 3 else "")
+        print(f"original: {note_url(argv[2], argv[3] if len(argv) > 3 else '')}")
         print(json.dumps(res, ensure_ascii=False)[:4000])
     else:
         print(f"unknown command: {cmd}")

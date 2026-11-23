@@ -46,6 +46,13 @@ needed, skip the relay.
 
 ## Login flow (QR → phone verification → verify real login)
 
+0. **Run the script, do not hand-step the login.** Start
+   `mcp/bin/login-auto.py` in the background — it owns QR generation,
+   enlarge + white border, unique sendable filename, polling
+   `check_login_status`, and auto-refresh on expiry, and prints
+   `QR:<path>`, `LOGIN-OK` or `LOGIN-FAILED`. The agent only sends the
+   QR from `mcp/tests/login-auto-state.json` (`pngPath`) and reports the
+   result. Manual generation / polling is the fallback, not the default.
 1. Check state first: `mcp/bin/status.sh` and MCP `check_login_status`.
    If already ✅, skip to verification step 5.
 2. **Only generate a QR when the user says they are ready to scan now.**
@@ -98,6 +105,12 @@ vendor/Spider_XHS/.venv/bin/python spider/rednote_api.py note <note_id> <xsec_to
 - **Summaries:** report only what the post says. No added commentary
   or judgement. If something needs checking, check a source first
   (e.g. a news channel for a news post) — never judge from memory.
+- **Links:** every result must carry its original post link so the
+  reader can open the source directly:
+  `https://www.xiaohongshu.com/explore/<note_id>?xsec_token=<token>&xsec_source=pc_search`
+  (omit the token param when there is none). `rednote_api.py` already
+  prints this link for `search`, `collect`, and `note` — include it in
+  the reply as well, don't strip it.
 
 ## Troubleshooting
 
@@ -106,6 +119,7 @@ vendor/Spider_XHS/.venv/bin/python spider/rednote_api.py note <note_id> <xsec_to
 | QR won't scan | Enlarge + white border; scan inside the app. |
 | QR expired / no scan detected | Generate only when the user is ready; scan + confirm immediately. |
 | SMS expired / "too many errors" | Send the code at once; CDP submit (~5 s); never re-submit an expired code; use the bound number. |
+| SMS submitted but the code expired anyway | A stale Chrome from a previous login round can steal the submit (wrong DevTools port). Run `mcp/bin/cleanup-login.sh` after every login round; `submit-sms.py` now picks the newest Chrome and checks the SMS dialog is actually open before typing. |
 | `check_login_status` ❌ right after login | Retry once. |
 | Spider search `-104` | Guest session on xiaohongshu.com — use `rednote_api.py`. |
 | Spider `-100` | Rednote cookies sent to a xiaohongshu.com host — wrong host, use webapi.rednote.com. |

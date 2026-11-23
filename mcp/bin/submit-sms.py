@@ -16,6 +16,7 @@ immediately after it arrives.
 """
 import glob
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -25,14 +26,24 @@ import websocket
 SMS_PLACEHOLDER = "请输入验证码"
 
 
-def find_page_ws():
-    ports = []
-    for f in glob.glob("/tmp/rod/user-data/*/DevToolsActivePort"):
+def find_page_ws_list():
+    """DevTools targets, newest Chrome first.
+
+    /tmp/rod/user-data/*/DevToolsActivePort files are sorted by mtime
+    descending, so a leftover Chrome from a previous login round is never
+    picked before the current one (2026-11-23: the first submit went to
+    the stale Chrome and the 5-minute SMS code expired while the real
+    dialog waited). Dead ports (Chrome already closed) are skipped.
+    """
+    files = sorted(
+        glob.glob("/tmp/rod/user-data/*/DevToolsActivePort"),
+        key=lambda f: os.path.getmtime(f), reverse=True)
+    out = []
+    for f in files:
         try:
-            ports.append(open(f).readline().strip())
+            port = open(f).readline().strip()
         except OSError:
-            pass
-    for port in ports:
+            continue
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/json", timeout=5) as r:
                 targets = json.load(r)
@@ -42,32 +53,58 @@ def find_page_ws():
             if t.get("type") == "page" and (
                 "xiaohongshu.com" in t.get("url", "") or "rednote.com" in t.get("url", "")
             ):
-                return t["webSocketDebuggerUrl"]
-    return None
+                out.append(t["webSocketDebuggerUrl"])
+    return out
 
 
 def main():
     code = sys.argv[1].strip()
     assert code.isdigit() and 4 <= len(code) <= 8, "code must be 4-8 digits"
-    ws_url = find_page_ws()
-    if not ws_url:
+    candidates = find_page_ws_list()
+    if not candidates:
         print("error: no Xiaohongshu Chrome DevTools target found (is login-qr.sh running?)",
               file=sys.stderr)
         return 1
-    ws = websocket.create_connection(ws_url, timeout=30, suppress_origin=True)
-    mid = [0]
+    ws = None
+    send = ev = None
+    for ws_url in candidates:
+        try:
+            ws = websocket.create_connection(ws_url, timeout=30, suppress_origin=True)
+        except Exception:
+            continue
+        mid = [0]
 
-    def send(method, params):
-        mid[0] += 1
-        i = mid[0]
-        ws.send(json.dumps({"id": i, "method": method, "params": params}))
-        while True:
-            r = json.loads(ws.recv())
-            if r.get("id") == i:
-                return r
+        def send(method, params):
+            mid[0] += 1
+            i = mid[0]
+            ws.send(json.dumps({"id": i, "method": method, "params": params}))
+            while True:
+                r = json.loads(ws.recv())
+                if r.get("id") == i:
+                    return r
 
-    def ev(expr):
-        return send("Runtime.evaluate", {"expression": expr, "returnByValue": True})
+        def ev(expr):
+            return send("Runtime.evaluate", {"expression": expr, "returnByValue": True})
+
+        # Confirm the SMS dialog is actually open on THIS page before
+        # typing into it — the dialog closes on its own, and a stale
+        # Chrome has no input at all.
+        r = ev("""
+(() => {
+  const inp = [...document.querySelectorAll('input')].find(e => e.placeholder === '%s');
+  return inp ? 'SMS-OPEN' : 'NO SMS INPUT';
+})()
+""" % SMS_PLACEHOLDER)
+        if r.get("result", {}).get("result", {}).get("value") == "SMS-OPEN":
+            print("sms dialog open on this Chrome, proceeding")
+            break
+        ws.close()
+        ws = None
+    if ws is None:
+        print("error: found Chrome(s) but none has the SMS dialog open "
+              "(did it close on its own? run bin/login-qr.sh for a fresh QR)",
+              file=sys.stderr)
+        return 1
 
     def click(x, y):
         for t in ("mousePressed", "mouseReleased"):
@@ -97,7 +134,13 @@ def main():
   return JSON.stringify({x: b.x + b.width / 2, y: b.y + b.height / 2, val: inp.value});
 })()
 """ % SMS_PLACEHOLDER)
-    info = json.loads(r["result"]["result"]["value"])
+    val = r["result"]["result"]["value"]
+    if val == "NO SMS INPUT":
+        print("error: SMS dialog closed between probe and typing — get a fresh QR",
+              file=sys.stderr)
+        ws.close()
+        return 1
+    info = json.loads(val)
     print("input:", info)
     click(info["x"], info["y"])
     send("Input.insertText", {"text": code})

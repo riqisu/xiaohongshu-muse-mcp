@@ -4,11 +4,16 @@
 # (e.g. the MCP server is down) or when a scan needs the SMS step handled,
 # because this Chrome stays open for the SMS code afterwards.
 #
-# Kills any previous login-tool run, retries the flaky first status check
-# (up to 4 attempts), waits for the QR dialog, screenshots the Xvfb screen
-# and crops the QR. Prints the PNG path — VERIFY the crop visually before
-# sending it to the user (all three finder patterns + white margin).
+# Closes any leftover login Chrome from the previous round first
+# (bin/cleanup-login.sh: login tool + rod Chrome + stale profiles),
+# so a new login never talks to the old browser. Then retries the
+# flaky first status check (up to 4 attempts), waits for the QR
+# dialog, screenshots the Xvfb screen and crops the QR. Prints the
+# PNG path — VERIFY the crop visually before sending it to the user
+# (all three finder patterns + white margin).
 # Latest QR is also copied to tests/login-qrcode-latest.png.
+# After the login round finishes, run bin/cleanup-login.sh again to
+# close this round's Chrome — do not leave it running.
 #
 # Usage: bin/login-qr.sh
 # Requires: relay + Xvfb up (bin/start-all.sh). The login tool's own
@@ -18,7 +23,7 @@ set -u
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 . ./bin/xhs-env.sh
 
-pkill -f "[x]iaohongshu-login-linux-amd64" 2>/dev/null; sleep 1
+bash ./bin/cleanup-login.sh 2>/dev/null; sleep 1
 FLOW=0
 for attempt in 1 2 3 4; do
   echo "attempt $attempt"
@@ -47,7 +52,7 @@ with MSS() as s:
     s.shot(output='/tmp/xhs-xvfb-qr.png')
 im = Image.open('/tmp/xhs-xvfb-qr.png')
 stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-out = Path.home() / f'workspace/custom-connectors/custom.xiaohongshu/tests/login-qrcode-live-{stamp}.png'
+out = Path("tests") / f"login-qrcode-live-{stamp}.png"
 out.parent.mkdir(parents=True, exist_ok=True)
 # QR dialog crop for the 1440x1200 Xvfb screen (verified 2026-11-23)
 im.crop((370, 400, 540, 610)).resize((510, 630), Image.LANCZOS).save(out)
